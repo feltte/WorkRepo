@@ -30,16 +30,19 @@
 		{
 			this.listBoxSourceFiles = new System.Windows.Forms.ListBox();
 			this.listBoxSheets = new System.Windows.Forms.ListBox();
+			this.dataGridView1 = new System.Windows.Forms.DataGridView();
+			((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
 			this.SuspendLayout();
 			// 
 			// listBoxSourceFiles
 			// 
 			this.listBoxSourceFiles.AllowDrop = true;
 			this.listBoxSourceFiles.FormattingEnabled = true;
-			this.listBoxSourceFiles.ItemHeight = 12;
-			this.listBoxSourceFiles.Location = new System.Drawing.Point(12, 12);
+			this.listBoxSourceFiles.ItemHeight = 15;
+			this.listBoxSourceFiles.Location = new System.Drawing.Point(16, 15);
+			this.listBoxSourceFiles.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
 			this.listBoxSourceFiles.Name = "listBoxSourceFiles";
-			this.listBoxSourceFiles.Size = new System.Drawing.Size(650, 88);
+			this.listBoxSourceFiles.Size = new System.Drawing.Size(865, 109);
 			this.listBoxSourceFiles.TabIndex = 0;
 			this.listBoxSourceFiles.DragDrop += new System.Windows.Forms.DragEventHandler(this.listBoxSourceFiles_DragDrop);
 			this.listBoxSourceFiles.DragEnter += new System.Windows.Forms.DragEventHandler(this.listBoxSourceFiles_DragEnter);
@@ -48,22 +51,36 @@
 			// listBoxSheets
 			// 
 			this.listBoxSheets.FormattingEnabled = true;
-			this.listBoxSheets.ItemHeight = 12;
-			this.listBoxSheets.Location = new System.Drawing.Point(668, 12);
+			this.listBoxSheets.ItemHeight = 15;
+			this.listBoxSheets.Location = new System.Drawing.Point(891, 15);
+			this.listBoxSheets.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
 			this.listBoxSheets.Name = "listBoxSheets";
-			this.listBoxSheets.Size = new System.Drawing.Size(120, 88);
+			this.listBoxSheets.Size = new System.Drawing.Size(159, 109);
 			this.listBoxSheets.TabIndex = 1;
 			this.listBoxSheets.DoubleClick += new System.EventHandler(this.listBoxSheets_DoubleClick);
 			// 
+			// dataGridView1
+			// 
+			this.dataGridView1.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+			this.dataGridView1.Location = new System.Drawing.Point(16, 131);
+			this.dataGridView1.Name = "dataGridView1";
+			this.dataGridView1.RowHeadersWidth = 51;
+			this.dataGridView1.RowTemplate.Height = 24;
+			this.dataGridView1.Size = new System.Drawing.Size(1034, 419);
+			this.dataGridView1.TabIndex = 2;
+			// 
 			// Form1
 			// 
-			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
+			this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(800, 450);
+			this.ClientSize = new System.Drawing.Size(1067, 562);
+			this.Controls.Add(this.dataGridView1);
 			this.Controls.Add(this.listBoxSheets);
 			this.Controls.Add(this.listBoxSourceFiles);
+			this.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
 			this.Name = "Form1";
 			this.Text = "Form1";
+			((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
 			this.ResumeLayout(false);
 
 		}
@@ -72,6 +89,7 @@
 
 		private System.Windows.Forms.ListBox listBoxSourceFiles;
 		private System.Windows.Forms.ListBox listBoxSheets;
+		private System.Windows.Forms.DataGridView dataGridView1;
 	}
 }
 

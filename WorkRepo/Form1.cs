@@ -68,12 +68,9 @@ namespace WorkRepo
 
 			var sheetName = lb.SelectedItem.ToString();
 			var dt = excelWorkBook.Tables[sheetName];
-			var rows = GetValuesAsArraysFrom(dt);
+			var report = new WorkRecord(dt);
+			dataGridView1.DataSource = report.RawData;
 
-			foreach(var obj in rows[4])
-			{
-				Trace.WriteLine($"{obj?.ToString()},  {obj?.GetType()}");
-			}
 		}
 
 		private object[][] GetValuesAsArraysFrom(DataTable dt)
