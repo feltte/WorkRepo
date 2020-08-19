@@ -22,17 +22,16 @@ namespace WorkRepo
 
 		private void listBoxSourceFiles_DragEnter(object sender, DragEventArgs e)
 		{
-			var droppedFiles = (string[])e.Data.GetData(DataFormats.FileDrop, false);
-			listBoxSourceFiles.Items.AddRange(droppedFiles);
-
-		}
-
-		private void listBoxSourceFiles_DragDrop(object sender, DragEventArgs e)
-		{
 			if (e.Data.GetDataPresent(DataFormats.FileDrop))
 				e.Effect = DragDropEffects.Copy;
 			else
 				e.Effect = DragDropEffects.None;
+		}
+
+		private void listBoxSourceFiles_DragDrop(object sender, DragEventArgs e)
+		{
+			var droppedFiles = (string[])e.Data.GetData(DataFormats.FileDrop, false);
+			listBoxSourceFiles.Items.AddRange(droppedFiles);
 		}
 
 		DataSet excelWorkBook;
@@ -61,6 +60,8 @@ namespace WorkRepo
 			}
 		}
 
+		WorkRecordTable workRecord;
+
 		private void listBoxSheets_DoubleClick(object sender, EventArgs e)
 		{
 			var lb = sender as ListBox;
@@ -68,25 +69,40 @@ namespace WorkRepo
 
 			var sheetName = lb.SelectedItem.ToString();
 			var dt = excelWorkBook.Tables[sheetName];
-			var report = new WorkRecord(dt);
-			dataGridView1.DataSource = report.RawData;
+			workRecord = new WorkRecordTable(dt);
+
+			ShowRawData();
 
 		}
 
-		private object[][] GetValuesAsArraysFrom(DataTable dt)
+		private void buttonShowRawData_Click(object sender, EventArgs e)
 		{
-			var rows = new List<object[]>();
-			foreach (DataRow row in dt.Rows)
-			{
-				var elemtns = new List<object>();
-				for (var i = 0; i < dt.Columns.Count; i++)
-				{
-					elemtns.Add(row[i]);
-				}
-				rows.Add(elemtns.Select(obj=>obj is System.DBNull?null:obj).ToArray());
-			}
-			return rows.ToArray();
+			ShowRawData();
 		}
 
+		private void ShowRawData()
+		{
+			if (workRecord.ErrorMessages.Count != 0)
+			{
+				dataGridView1.DataSource = workRecord.ErrorMessages;
+				return;
+			}
+			dataGridView1.DataSource = workRecord.AsTable(0, workRecord.RowsCount);
+//			dataGridView1.Columns[WorkRecordTable.ColumnIndexDate].DefaultCellStyle.Format = "MM/dd";
+//			dataGridView1.Columns[WorkRecordTable.ColumnIndexWorkStartTime].DefaultCellStyle.Format = "HH:mm";
+//			dataGridView1.Columns[WorkRecordTable.WorkEndTimeColumnIndex].DefaultCellStyle.Format = "HH:mm";
+//			dataGridView1.Columns[WorkRecordTable.TaskTimeColumnIndex].DefaultCellStyle.Format = "HH:mm";
+
+		}
+
+		private void buttonStatistics_Click(object sender, EventArgs e)
+		{
+			if (workRecord.ErrorMessages.Count != 0)
+			{
+				dataGridView1.DataSource = workRecord.ErrorMessages;
+				return;
+			}
+			dataGridView1.DataSource = workRecord.GetStatistics();
+		}
 	}
 }
