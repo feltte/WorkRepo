@@ -15,7 +15,7 @@ namespace WorkRepo
 
 		public int RowsCount { get { return values.Length; } }
 
-		protected MyTable() { } // データなしでの生成は認めない
+		protected MyTable() { }		// データなしでの生成は不可
 
 		public object ValueAt(int row, int column) { return values[row][column]; }
 		public object SetValueAt(int row, int column, object value)
@@ -23,16 +23,9 @@ namespace WorkRepo
 			values[row][column] = value;
 			return value;
 		}
-
 		public IReadOnlyList<object[]> Rows { get { return values; } }
-		public IReadOnlyList<object> RowAt(int row)
-		{
-			return values[row];
-		}
-		public IReadOnlyList<object[]> RowsFrom(int rowIndex)
-		{
-			return values.Skip(rowIndex).ToArray();
-		}
+		public IReadOnlyList<object[]> RowsFrom(int rowIndex){return values.Skip(rowIndex).ToArray();}
+		public IReadOnlyList<object> RowAt(int row) { return values[row]; }
 
 		/// <summary>
 		/// DataTableからデータを読み込んでインスタンス化する
@@ -63,6 +56,23 @@ namespace WorkRepo
 			this.values = rows.ToArray();
 		}
 
+		public int ReplaceBlank(object to)
+		{
+			int count = 0;
+			for(var i = 0; i<values.Length;i++)
+			{
+				for(var j = 0;j<values[0].Length;j++)
+				{
+					if (values[i][j] is string && string.IsNullOrWhiteSpace((string)values[i][j]))
+					{
+						values[i][j] = to;
+						count++;
+					}
+				}
+			}
+			return count;
+		}
+
 		/// <summary>
 		/// 内部データをDataTableとして取り出す
 		/// </summary>
@@ -73,7 +83,7 @@ namespace WorkRepo
 		{
 			if (values == null) throw new ApplicationException("Data is not ready.");
 
-			var columnCount = values[0].Length;	// データ読み込み時に子配列の要素数=列数が同じなことが担保されているので、最初の横配列だけを見れば良い。
+			var columnCount = values[0].Length;	// データ読み込み時に子配列の要素数=列数が同じなことは確認済みなので、最初の配列だけを見れば良い。
 
 			var dt = new DataTable();
 			for (var i = 0; i < columnCount; i++)	dt.Columns.Add();
@@ -114,6 +124,7 @@ namespace WorkRepo
 
 		public WorkRecordTable(DataTable dt) : base(dt, null)
 		{
+			ReplaceBlank(null);
 			FillBlankDate();
 			ErrorMessages = ConfirmValues();
 		}
@@ -124,7 +135,7 @@ namespace WorkRepo
 			for(var i=TableIndexes.RecordStartRow;i<base.RowsCount;i++)
 			{
 				if (ValueAt(i, TableIndexes.Date) != null) date = (DateTime)ValueAt(i, TableIndexes.Date);
-				else if (RowAt(i).Any(value => value != null)) SetValueAt(i, TableIndexes.Date, date);
+				else if (RowAt(i).Any(value => value != null)) SetValueAt(i, TableIndexes.Date, date);	// 1カ所でも記入されいてるセルがある場合は日付を入れる
 			}
 		}
 
@@ -135,6 +146,7 @@ namespace WorkRepo
 			var records = Rows.Skip(TableIndexes.RecordStartRow);
 
 			// 仕事タイプと開始・終了時刻の検証
+			// 勤務種類, 開始時刻, 終了時刻のいずれかが記入されている行を抽出する
 			var workTimeRecords = records
 				.Where(record => record[TableIndexes.WorkType] != null || record[TableIndexes.WorkStartTime] != null || record[TableIndexes.WorkEndTime] != null)
 				.Select(record => new 
@@ -144,8 +156,8 @@ namespace WorkRepo
 					Start = record[TableIndexes.WorkStartTime], 
 					End = record[TableIndexes.WorkEndTime]
 				});
-			// 入力に不足がないか
-			var incompleteWorkTimeRecords = workTimeRecords.Where(record => record.Type == null || record.Start == null || record.End == null);
+			// 時刻の記入不足がないか
+			var incompleteWorkTimeRecords = workTimeRecords.Where(record => record.Start == null || record.End == null);
 			if(incompleteWorkTimeRecords.Any())
 			{
 				foreach(var record in incompleteWorkTimeRecords)
@@ -153,8 +165,10 @@ namespace WorkRepo
 					messages.Add($"{((DateTime)(record.Date)).ToString("MM/dd")}の開始/終了時刻記録が不足しています");
 				}
 			}
+
 			// 時刻が逆転していないか
-			var invalidWorkTimeRecords = workTimeRecords.Where(record => (DateTime)(record.Start) > (DateTime)(record.End));
+			var invalidWorkTimeRecords = workTimeRecords
+				.Where(record => record.Start != null && record.End != null && (DateTime)(record.Start) > (DateTime)(record.End));
 			if(invalidWorkTimeRecords.Any())
 			{
 				foreach (var record in invalidWorkTimeRecords)
@@ -163,19 +177,20 @@ namespace WorkRepo
 				}
 			}
 
-			// 通算時間の確認
-			var incompleteTaskRecords = records.Where(record => record[TableIndexes.DoneTask] != null)
+			// 各タスク時間記入の確認
+			var incompleteTaskRecords = records.Where(record => record[TableIndexes.TaskType] != null || record[TableIndexes.TaskTime]!=null)
 				.Select(record => new
 				{
 					Date = record[TableIndexes.Date],
+					Type = record[TableIndexes.TaskType],
 					Time = record[TableIndexes.TaskTime]
 				})
-				.Where(record => record.Time == null);
+				.Where(record => record.Time == null || record.Type == null);
 			if(incompleteTaskRecords.Any())
 			{
 				foreach(var record in incompleteTaskRecords)
 				{
-					messages.Add($"{((DateTime)(record.Date)).ToString("MM/dd")}に時刻未記入の業務記載があります");
+					messages.Add($"{((DateTime)(record.Date)).ToString("MM/dd")}に業務タイプ/時刻未記入の記録があります");
 				}
 			}
 			return messages;
@@ -227,6 +242,8 @@ namespace WorkRepo
 		{
 			var allRecords = base.Rows.Skip(TableIndexes.RecordStartRow);
 
+			var test = TaskElement.FromRecordRow(Rows[TableIndexes.RecordStartRow]);
+
 			var supportTasks = allRecords
 				.Where(row => (row[TableIndexes.TaskType] as string) == "事業支援")
 				.Select(row => TaskElement.FromRecordRow(row));
@@ -240,13 +257,13 @@ namespace WorkRepo
 			};
 
 			var researchTasks = allRecords
-				.Where(row => (row[TableIndexes.TaskType] as string) == "その他")
+				.Where(row => (row[TableIndexes.TaskType] as string) != "事業支援")
 				.Select(row => TaskElement.FromRecordRow(row));
 			var researchTaskTimeSum = new TimeSpan(researchTasks.Sum(record => record.Time.Ticks));
 			var researchTaskSumElement = new TaskElement()
 			{
 				Date = (DateTime)researchTasks.Last().Date,
-				Type = "開発",
+				Type = "その他",
 				Detail = "集計",
 				Time = researchTaskTimeSum,
 			};
@@ -257,7 +274,8 @@ namespace WorkRepo
 			elements.AddRange(researchTasks.ToArray());
 			elements.Add(researchTaskSumElement);
 
-			return TableFrom(elements);
+			var dt = TableFrom(elements);
+			return dt;
 		}
 
 
