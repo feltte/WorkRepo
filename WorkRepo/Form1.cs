@@ -53,10 +53,10 @@ namespace WorkRepo
 			var selectedFile = lb.SelectedItem.ToString();
 
 			using (var fs = File.Open(selectedFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-			using (var er = ExcelReaderFactory.CreateReader(fs))
+			using (var excelReader = ExcelReaderFactory.CreateReader(fs))
 			{
 				listBoxSheets.Items.Clear();
-				excelWorkBook = er.AsDataSet();
+				excelWorkBook = excelReader.AsDataSet();
 				foreach (DataTable dt in excelWorkBook.Tables)
 				{
 					listBoxSheets.Items.Add(dt.TableName);
@@ -91,7 +91,7 @@ namespace WorkRepo
 				foreach (var msg in workRecord.ErrorMessages)
 					messagesList.Add(msg);
 			}
-			dataGridView1.DataSource = workRecord.AsTable(0, workRecord.RowsCount);
+			dataGridView1.DataSource = workRecord.AsDataTable();
 //			dataGridView1.Columns[WorkRecordTable.ColumnIndexDate].DefaultCellStyle.Format = "MM/dd";
 //			dataGridView1.Columns[WorkRecordTable.ColumnIndexWorkStartTime].DefaultCellStyle.Format = "HH:mm";
 //			dataGridView1.Columns[WorkRecordTable.WorkEndTimeColumnIndex].DefaultCellStyle.Format = "HH:mm";

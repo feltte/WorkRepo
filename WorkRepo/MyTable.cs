@@ -79,7 +79,7 @@ namespace WorkRepo
 		/// <param name="startRowIndex">取り出し始めの行番号</param>
 		/// <param name="endRowIndex">終わりの行番号</param>
 		/// <returns></returns>
-		public DataTable AsTable(int startRowIndex, int endRowIndex)
+		public DataTable AsDataTable(int startRowIndex, int endRowIndex)
 		{
 			if (values == null) throw new ApplicationException("Data is not ready.");
 
@@ -100,7 +100,7 @@ namespace WorkRepo
 
 	class WorkRecordTable : MyTable
 	{
-		static class TableIndexes
+		static private class TableIndexes
 		{
 			static public readonly int RecordStartRow = 4;
 
@@ -116,7 +116,16 @@ namespace WorkRepo
 			static public readonly int DoneTask = 12;
 			static public readonly int TaskType = 13;
 			static public readonly int TaskTime = 14;
+
+			/// <summary>
+			/// DateTimeでなくTimeSpanとして扱いたいカラムのリスト
+			/// 開始/終了時刻はDateTimeであるべきだが、ファイルでは月日未記入で起源日(1899/12/31)と認識されてしまうので
+			/// あえてTimeSpanにしておく（行頭の日付値と足し算すれば時刻にできる）
+			/// </summary>
+			static public readonly int[] TimeSpanColumns = { WorkStartTime, WorkEndTime, TaskTime, };
 		}
+
+		static readonly DateTime ExcelOriginDate = new DateTime(1899, 12, 31);
 
 		private WorkRecordTable() { }
 
@@ -126,10 +135,16 @@ namespace WorkRepo
 		{
 			ReplaceBlank(null);
 			FillBlankDate();
-			ErrorMessages = ConfirmValues();
+			FixTimeValues();
+			ErrorMessages = CheckUpValues();
 		}
 
-		public void FillBlankDate()
+		public DataTable AsDataTable()
+		{
+			return base.AsDataTable(TableIndexes.RecordStartRow, RowsCount);
+		}
+
+		private void FillBlankDate()
 		{
 			DateTime date = new DateTime();
 			for(var i=TableIndexes.RecordStartRow;i<base.RowsCount;i++)
@@ -139,7 +154,24 @@ namespace WorkRepo
 			}
 		}
 
-		public IReadOnlyList<string> ConfirmValues()
+		private void FixTimeValues()
+		{
+			// TimeSpanとして扱われるべき項目がDateTimeとして格納されいてるのをTimeSpanに直す
+			for (var rowIdx = TableIndexes.RecordStartRow; rowIdx < base.RowsCount; rowIdx++)
+			{
+				foreach(var colIdx in TableIndexes.TimeSpanColumns)
+				{
+					if (ValueAt(rowIdx, colIdx) != null)
+					{
+						var value = (DateTime)ValueAt(rowIdx, colIdx);
+						var span = value - ExcelOriginDate;
+						SetValueAt(rowIdx, colIdx, span);
+					}
+				}
+			}
+		}
+
+		public IReadOnlyList<string> CheckUpValues()
 		{
 			var messages = new List<string>();
 
@@ -168,7 +200,7 @@ namespace WorkRepo
 
 			// 時刻が逆転していないか
 			var invalidWorkTimeRecords = workTimeRecords
-				.Where(record => record.Start != null && record.End != null && (DateTime)(record.Start) > (DateTime)(record.End));
+				.Where(record => record.Start != null && record.End != null && (TimeSpan)(record.Start) > (TimeSpan)(record.End));
 			if(invalidWorkTimeRecords.Any())
 			{
 				foreach (var record in invalidWorkTimeRecords)
@@ -242,7 +274,7 @@ namespace WorkRepo
 		{
 			var allRecords = base.Rows.Skip(TableIndexes.RecordStartRow);
 
-			var test = TaskElement.FromRecordRow(Rows[TableIndexes.RecordStartRow]);
+			//var test = TaskElement.FromRecordRow(Rows[TableIndexes.RecordStartRow]);
 
 			var supportTasks = allRecords
 				.Where(row => (row[TableIndexes.TaskType] as string) == "事業支援")
@@ -257,7 +289,7 @@ namespace WorkRepo
 			};
 
 			var researchTasks = allRecords
-				.Where(row => (row[TableIndexes.TaskType] as string) != "事業支援")
+				.Where(row => (row[TableIndexes.TaskType] as string) == "その他")
 				.Select(row => TaskElement.FromRecordRow(row));
 			var researchTaskTimeSum = new TimeSpan(researchTasks.Sum(record => record.Time.Ticks));
 			var researchTaskSumElement = new TaskElement()

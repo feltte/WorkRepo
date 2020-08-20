@@ -34,9 +34,9 @@
 			this.splitContainer1 = new System.Windows.Forms.SplitContainer();
 			this.label2 = new System.Windows.Forms.Label();
 			this.label1 = new System.Windows.Forms.Label();
-			this.buttonStatistics = new System.Windows.Forms.Button();
-			this.buttonShowRawData = new System.Windows.Forms.Button();
 			this.splitContainer2 = new System.Windows.Forms.SplitContainer();
+			this.buttonShowRawData = new System.Windows.Forms.Button();
+			this.buttonStatistics = new System.Windows.Forms.Button();
 			this.listBoxMessages = new System.Windows.Forms.ListBox();
 			((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
 			((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
@@ -56,11 +56,10 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.listBoxSourceFiles.FormattingEnabled = true;
-			this.listBoxSourceFiles.ItemHeight = 15;
-			this.listBoxSourceFiles.Location = new System.Drawing.Point(16, 30);
-			this.listBoxSourceFiles.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.listBoxSourceFiles.ItemHeight = 12;
+			this.listBoxSourceFiles.Location = new System.Drawing.Point(12, 24);
 			this.listBoxSourceFiles.Name = "listBoxSourceFiles";
-			this.listBoxSourceFiles.Size = new System.Drawing.Size(868, 109);
+			this.listBoxSourceFiles.Size = new System.Drawing.Size(590, 76);
 			this.listBoxSourceFiles.TabIndex = 0;
 			this.listBoxSourceFiles.DragDrop += new System.Windows.Forms.DragEventHandler(this.listBoxSourceFiles_DragDrop);
 			this.listBoxSourceFiles.DragEnter += new System.Windows.Forms.DragEventHandler(this.listBoxSourceFiles_DragEnter);
@@ -71,11 +70,10 @@
 			this.listBoxSheets.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.listBoxSheets.FormattingEnabled = true;
-			this.listBoxSheets.ItemHeight = 15;
-			this.listBoxSheets.Location = new System.Drawing.Point(893, 30);
-			this.listBoxSheets.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.listBoxSheets.ItemHeight = 12;
+			this.listBoxSheets.Location = new System.Drawing.Point(660, 24);
 			this.listBoxSheets.Name = "listBoxSheets";
-			this.listBoxSheets.Size = new System.Drawing.Size(156, 109);
+			this.listBoxSheets.Size = new System.Drawing.Size(118, 76);
 			this.listBoxSheets.TabIndex = 1;
 			this.listBoxSheets.DoubleClick += new System.EventHandler(this.listBoxSheets_DoubleClick);
 			// 
@@ -85,20 +83,19 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.dataGridView1.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-			this.dataGridView1.Location = new System.Drawing.Point(4, 39);
-			this.dataGridView1.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
+			this.dataGridView1.Location = new System.Drawing.Point(3, 31);
+			this.dataGridView1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
 			this.dataGridView1.Name = "dataGridView1";
 			this.dataGridView1.ReadOnly = true;
 			this.dataGridView1.RowHeadersWidth = 51;
 			this.dataGridView1.RowTemplate.Height = 24;
-			this.dataGridView1.Size = new System.Drawing.Size(1063, 262);
+			this.dataGridView1.Size = new System.Drawing.Size(797, 211);
 			this.dataGridView1.TabIndex = 2;
 			// 
 			// splitContainer1
 			// 
 			this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.splitContainer1.Location = new System.Drawing.Point(0, 0);
-			this.splitContainer1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
 			this.splitContainer1.Name = "splitContainer1";
 			this.splitContainer1.Orientation = System.Windows.Forms.Orientation.Horizontal;
 			// 
@@ -112,57 +109,33 @@
 			// splitContainer1.Panel2
 			// 
 			this.splitContainer1.Panel2.Controls.Add(this.splitContainer2);
-			this.splitContainer1.Size = new System.Drawing.Size(1067, 562);
-			this.splitContainer1.SplitterDistance = 152;
-			this.splitContainer1.SplitterWidth = 5;
+			this.splitContainer1.Size = new System.Drawing.Size(800, 450);
+			this.splitContainer1.SplitterDistance = 121;
 			this.splitContainer1.TabIndex = 3;
 			// 
 			// label2
 			// 
 			this.label2.AutoSize = true;
-			this.label2.Location = new System.Drawing.Point(891, 11);
-			this.label2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+			this.label2.Location = new System.Drawing.Point(668, 9);
 			this.label2.Name = "label2";
-			this.label2.Size = new System.Drawing.Size(72, 15);
+			this.label2.Size = new System.Drawing.Size(57, 12);
 			this.label2.TabIndex = 3;
 			this.label2.Text = "シート選択";
 			// 
 			// label1
 			// 
 			this.label1.AutoSize = true;
-			this.label1.Location = new System.Drawing.Point(16, 11);
-			this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+			this.label1.Location = new System.Drawing.Point(12, 9);
 			this.label1.Name = "label1";
-			this.label1.Size = new System.Drawing.Size(212, 15);
+			this.label1.Size = new System.Drawing.Size(170, 12);
 			this.label1.TabIndex = 2;
 			this.label1.Text = "業務記録Excelファイル登録&&選択";
-			// 
-			// buttonStatistics
-			// 
-			this.buttonStatistics.Location = new System.Drawing.Point(112, 4);
-			this.buttonStatistics.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
-			this.buttonStatistics.Name = "buttonStatistics";
-			this.buttonStatistics.Size = new System.Drawing.Size(100, 29);
-			this.buttonStatistics.TabIndex = 4;
-			this.buttonStatistics.Text = "統計";
-			this.buttonStatistics.UseVisualStyleBackColor = true;
-			this.buttonStatistics.Click += new System.EventHandler(this.buttonStatistics_Click);
-			// 
-			// buttonShowRawData
-			// 
-			this.buttonShowRawData.Location = new System.Drawing.Point(4, 4);
-			this.buttonShowRawData.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
-			this.buttonShowRawData.Name = "buttonShowRawData";
-			this.buttonShowRawData.Size = new System.Drawing.Size(100, 29);
-			this.buttonShowRawData.TabIndex = 3;
-			this.buttonShowRawData.Text = "生データ";
-			this.buttonShowRawData.UseVisualStyleBackColor = true;
-			this.buttonShowRawData.Click += new System.EventHandler(this.buttonShowRawData_Click);
 			// 
 			// splitContainer2
 			// 
 			this.splitContainer2.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.splitContainer2.Location = new System.Drawing.Point(0, 0);
+			this.splitContainer2.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
 			this.splitContainer2.Name = "splitContainer2";
 			this.splitContainer2.Orientation = System.Windows.Forms.Orientation.Horizontal;
 			// 
@@ -175,28 +148,49 @@
 			// splitContainer2.Panel2
 			// 
 			this.splitContainer2.Panel2.Controls.Add(this.listBoxMessages);
-			this.splitContainer2.Size = new System.Drawing.Size(1067, 405);
-			this.splitContainer2.SplitterDistance = 303;
+			this.splitContainer2.Size = new System.Drawing.Size(800, 325);
+			this.splitContainer2.SplitterDistance = 243;
+			this.splitContainer2.SplitterWidth = 3;
 			this.splitContainer2.TabIndex = 5;
+			// 
+			// buttonShowRawData
+			// 
+			this.buttonShowRawData.Location = new System.Drawing.Point(3, 3);
+			this.buttonShowRawData.Name = "buttonShowRawData";
+			this.buttonShowRawData.Size = new System.Drawing.Size(75, 23);
+			this.buttonShowRawData.TabIndex = 3;
+			this.buttonShowRawData.Text = "生データ";
+			this.buttonShowRawData.UseVisualStyleBackColor = true;
+			this.buttonShowRawData.Click += new System.EventHandler(this.buttonShowRawData_Click);
+			// 
+			// buttonStatistics
+			// 
+			this.buttonStatistics.Location = new System.Drawing.Point(84, 3);
+			this.buttonStatistics.Name = "buttonStatistics";
+			this.buttonStatistics.Size = new System.Drawing.Size(75, 23);
+			this.buttonStatistics.TabIndex = 4;
+			this.buttonStatistics.Text = "統計";
+			this.buttonStatistics.UseVisualStyleBackColor = true;
+			this.buttonStatistics.Click += new System.EventHandler(this.buttonStatistics_Click);
 			// 
 			// listBoxMessages
 			// 
 			this.listBoxMessages.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.listBoxMessages.FormattingEnabled = true;
 			this.listBoxMessages.HorizontalScrollbar = true;
-			this.listBoxMessages.ItemHeight = 15;
+			this.listBoxMessages.ItemHeight = 12;
 			this.listBoxMessages.Location = new System.Drawing.Point(0, 0);
+			this.listBoxMessages.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
 			this.listBoxMessages.Name = "listBoxMessages";
-			this.listBoxMessages.Size = new System.Drawing.Size(1067, 98);
+			this.listBoxMessages.Size = new System.Drawing.Size(800, 79);
 			this.listBoxMessages.TabIndex = 0;
 			// 
 			// Form1
 			// 
-			this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
+			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(1067, 562);
+			this.ClientSize = new System.Drawing.Size(800, 450);
 			this.Controls.Add(this.splitContainer1);
-			this.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
 			this.Name = "Form1";
 			this.Text = "Form1";
 			((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
