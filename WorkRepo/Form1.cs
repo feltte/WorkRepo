@@ -91,16 +91,17 @@ namespace WorkRepo
 				foreach (var msg in workRecord.ErrorMessages)
 					messagesList.Add(msg);
 			}
-			dataGridView1.DataSource = workRecord.AsDataTable();
-//			dataGridView1.Columns[WorkRecordTable.ColumnIndexDate].DefaultCellStyle.Format = "MM/dd";
-//			dataGridView1.Columns[WorkRecordTable.ColumnIndexWorkStartTime].DefaultCellStyle.Format = "HH:mm";
-//			dataGridView1.Columns[WorkRecordTable.WorkEndTimeColumnIndex].DefaultCellStyle.Format = "HH:mm";
-//			dataGridView1.Columns[WorkRecordTable.TaskTimeColumnIndex].DefaultCellStyle.Format = "HH:mm";
+			var dt = workRecord.ToDataTable();
+
+			dataGridView1.DataSource = dt;
+
+			dataGridView1.Columns[WorkRecordTable.ColumnParams["Date"].Index].DefaultCellStyle.Format = "MM/dd";
+			dataGridView1.Columns[WorkRecordTable.ColumnParams["StartTime"].Index].DefaultCellStyle.Format = "HH:mm";
+			dataGridView1.Columns[WorkRecordTable.ColumnParams["EndTime"].Index].DefaultCellStyle.Format = "HH:mm";
 		}
 
 		private void buttonStatistics_Click(object sender, EventArgs e)
 		{
-
 			dataGridView1.DataSource = workRecord.GetStatistics();
 		}
 	}

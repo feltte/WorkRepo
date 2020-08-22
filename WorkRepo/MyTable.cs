@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
+using System.Net.Security;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,61 +14,60 @@ namespace WorkRepo
 {
 	class MyTable
 	{
-		private object[][] values;
+		private List<List<object>> _values;
 
-		public int RowsCount { get { return values.Length; } }
-
-		protected MyTable() { }		// データなしでの生成は不可
-
-		public object ValueAt(int row, int column) { return values[row][column]; }
+		public object ValueAt(int row, int column) { return _values[row][column]; }
 		public object SetValueAt(int row, int column, object value)
 		{
-			values[row][column] = value;
+			_values[row][column] = value;
 			return value;
 		}
-		public IReadOnlyList<object[]> Rows { get { return values; } }
-		public IReadOnlyList<object[]> RowsFrom(int rowIndex){return values.Skip(rowIndex).ToArray();}
-		public IReadOnlyList<object> RowAt(int row) { return values[row]; }
+		public IReadOnlyList<IReadOnlyList<object>> Rows { get { return _values; } }
+		public IReadOnlyList<object> RowAt(int row) { return _values[row]; }
+
+		protected MyTable() { }     // データなしでの生成は不可
 
 		/// <summary>
-		/// DataTableからデータを読み込んでインスタンス化する
+		/// DataTableからデータを取り込む。DBNullはnullとして扱う
 		/// </summary>
 		/// <param name="dt">読み込むDataTable</param>
-		/// <param name="nullValue">空欄(DBNull)の代わりに代入する値</param>
-		public MyTable(DataTable dt, object nullValue)
+		public MyTable(DataTable dt)
 		{
-			var columnCount = -1;
-			var rows = new List<object[]>();
+			_values = new List<List<object>>();
+
 			foreach (DataRow row in dt.Rows)
 			{
-				var elemtns = new List<object>();
+				var elements = new List<object>();
 				for (var i = 0; i < dt.Columns.Count; i++)
 				{
-					elemtns.Add(row[i]);
+					if (row[i] is System.DBNull)
+					{
+						elements.Add(null);
+					}
+					else
+					{
+						elements.Add(row[i]);
+					}
 				}
-				if(columnCount == -1)
-				{
-					columnCount = elemtns.Count;
-				}
-				else if(columnCount != elemtns.Count)
-				{
-					throw new ApplicationException("Column counts are not same.");
-				}
-				rows.Add(elemtns.Select(obj => obj is System.DBNull ? nullValue : obj).ToArray());
+				_values.Add(elements);
 			}
-			this.values = rows.ToArray();
 		}
 
+		/// <summary>
+		/// 内部データの空白文字列を指定の値に置き換える
+		/// </summary>
+		/// <param name="to"></param>
+		/// <returns></returns>
 		public int ReplaceBlank(object to)
 		{
 			int count = 0;
-			for(var i = 0; i<values.Length;i++)
+			for(var i = 0; i<_values.Count; i++)
 			{
-				for(var j = 0;j<values[0].Length;j++)
+				for(var j = 0;j<_values[0].Count;j++)
 				{
-					if (values[i][j] is string && string.IsNullOrWhiteSpace((string)values[i][j]))
+					if (_values[i][j] is string && string.IsNullOrWhiteSpace((string)_values[i][j]))
 					{
-						values[i][j] = to;
+						_values[i][j] = to;
 						count++;
 					}
 				}
@@ -77,193 +79,318 @@ namespace WorkRepo
 		/// 内部データをDataTableとして取り出す
 		/// </summary>
 		/// <param name="startRowIndex">取り出し始めの行番号</param>
-		/// <param name="endRowIndex">終わりの行番号</param>
+		/// <param name="count">取り出す行数</param>
 		/// <returns></returns>
-		public DataTable AsDataTable(int startRowIndex, int endRowIndex)
+		public DataTable ToDataTable(int startRowIndex, int count)
 		{
-			if (values == null) throw new ApplicationException("Data is not ready.");
+			if (_values == null) throw new ApplicationException("Data is not ready.");
 
-			var columnCount = values[0].Length;	// データ読み込み時に子配列の要素数=列数が同じなことは確認済みなので、最初の配列だけを見れば良い。
+			var columnCount = _values[0].Count;
 
 			var dt = new DataTable();
-			for (var i = 0; i < columnCount; i++)	dt.Columns.Add();
 
-			for (var i = startRowIndex; i < endRowIndex; i++)
+			var scheme = Enumerable.Repeat<Type>(typeof(string), columnCount).ToArray();
+
+			var targetRows = _values.Skip(startRowIndex).Take(count);
+
+			// 列の型を決めるために全走査(最後に出てきたnull以外の型をその列の型とする)
+			foreach(var row in targetRows)
+			{
+				for(var i=0;i<columnCount;i++)
+				{
+					if (row[i] != null && row[i].GetType() != typeof(string)) scheme[i] = row[i].GetType();
+				}
+			}
+			for (var i = 0; i < columnCount; i++) dt.Columns.Add($"column{i}",scheme[i]);
+
+			// 実データコピーのために再び全走査
+			foreach(var row in targetRows)
 			{
 				var dr = dt.NewRow();
-				for (var j = 0; j < columnCount; j++)	dr[j] = values[i][j];
+				for (var j = 0; j < columnCount; j++)
+				{
+					if (row[j] != null) dr[j] = (object)row[j];
+				}
 				dt.Rows.Add(dr);
 			}
 			return dt;
 		}
+
+		/// <summary>
+		/// 指定の行を取り除く
+		/// </summary>
+		/// <param name="index"></param>
+		public void RemoveRow(int index)
+		{
+			_values.RemoveAt(index);
+		}
+
+		/// <summary>
+		/// 指定範囲にある行を取り除く
+		/// </summary>
+		/// <param name="start"></param>
+		/// <param name="count"></param>
+		public void RemoveRows(int start, int count)
+		{
+			_values.RemoveRange(start, count);
+		}
+
+		/// <summary>
+		/// 指定の列を取り除く
+		/// </summary>
+		/// <param name="index"></param>
+		public void RemoveColumn(int index)
+		{
+			foreach(var row in _values)
+			{
+				row.RemoveAt(index);
+			}
+		}
+	}
+
+	class ItemParameter
+	{
+		public int Index { get; set; }
+		public string Description { get; set; }
+	}
+
+	class RowParameter : ItemParameter { }
+	class ColumnParameter : ItemParameter
+	{
+		/// <summary>
+		/// データ型
+		/// </summary>
+		public Type Type { get; set; } = typeof(string);
+
+		/// <summary>
+		/// 区切りのための空項目かどうか
+		/// </summary>
+		public bool IsDelim { get; set; } = false;
+
+		/// <summary>
+		/// DateTime型のデータだが、記入時に日付省略されている可能性がある項目かどうか
+		/// </summary>
+		public bool MayBeIncompleteTime { get; set; } = false;
 	}
 
 	class WorkRecordTable : MyTable
 	{
-		static private class TableIndexes
+		private static readonly Dictionary<string, RowParameter> _rowParams = new Dictionary<string, RowParameter>
 		{
-			static public readonly int RecordStartRow = 4;
+			{"RecordStart", new RowParameter(){ Index = 4, Description = "記録開始行" } },
+		};
+		private static readonly Dictionary<string, ColumnParameter> _colParams = new Dictionary<string, ColumnParameter>
+		{
+			{"Date",        new ColumnParameter(){ Index = 0, Description = "日付",       Type =typeof(DateTime) } },
+			{"WeekDay",     new ColumnParameter(){ Index = 1, Description = "曜日" } },
+			{"PlanAM",      new ColumnParameter(){ Index = 2, Description = "午前計画" } },
+			{"PlanPM",      new ColumnParameter(){ Index = 3, Description = "午後計画" } },
+			{"ActAM",       new ColumnParameter(){ Index = 4, Description = "午前実行" } },
+			{"ActPM",       new ColumnParameter(){ Index = 5, Description = "午後実行" } },
+			{"Delim1",      new ColumnParameter(){ Index = 6, Description = "Delim1",   IsDelim = true } },
+			{"TimeType",    new ColumnParameter(){ Index = 7, Description = "時刻種類" } },
+			{"StartTime",   new ColumnParameter(){ Index = 8, Description = "開始時刻", Type = typeof(DateTime), MayBeIncompleteTime = true } },
+			{"EndTime",		new ColumnParameter(){ Index = 9, Description = "終了時刻", Type = typeof(DateTime), MayBeIncompleteTime = true } },
+			{"Delim2",		new ColumnParameter(){ Index = 10, Description = "Delim2",	IsDelim = true } },
+			{"PlanTask",	new ColumnParameter(){ Index = 11, Description = "計画業務" } },
+			{"ActTask",		new ColumnParameter(){ Index = 12, Description = "実行業務" } },
+			{"TaskType",	new ColumnParameter(){ Index = 13, Description = "業務種類" } },
+			{"TaskTime",	new ColumnParameter(){ Index = 14, Description = "業務時間",	Type = typeof(TimeSpan), MayBeIncompleteTime = true } },
+		};
 
-			static public readonly int Date = 0;
-			static public readonly int PlanAM = 2;
-			static public readonly int PlanPM = 3;
-			static public readonly int ActualAM = 4;
-			static public readonly int ActualPM = 5;
-			static public readonly int WorkType= 7;
-			static public readonly int WorkStartTime = 8;
-			static public readonly int WorkEndTime = 9;
-			static public readonly int PlanTask = 11;
-			static public readonly int DoneTask = 12;
-			static public readonly int TaskType = 13;
-			static public readonly int TaskTime = 14;
-
-			/// <summary>
-			/// DateTimeでなくTimeSpanとして扱いたいカラムのリスト
-			/// 開始/終了時刻はDateTimeであるべきだが、ファイルでは月日未記入で起源日(1899/12/31)と認識されてしまうので
-			/// あえてTimeSpanにしておく（行頭の日付値と足し算すれば時刻にできる）
-			/// </summary>
-			static public readonly int[] TimeSpanColumns = { WorkStartTime, WorkEndTime, TaskTime, };
-		}
+		public static IReadOnlyDictionary<string, ColumnParameter> ColumnParams { get { return _colParams; } }
 
 		static readonly DateTime ExcelOriginDate = new DateTime(1899, 12, 31);
 
 		private WorkRecordTable() { }
 
-		public IReadOnlyList<string> ErrorMessages { get; private set; }
+		private List<string> _messages = new List<string>();
+		public IReadOnlyList<string> ErrorMessages { get { return _messages; } }
 
-		public WorkRecordTable(DataTable dt) : base(dt, null)
+		public WorkRecordTable(DataTable dt) : base(dt)
 		{
 			ReplaceBlank(null);
 			FillBlankDate();
 			FixTimeValues();
-			ErrorMessages = CheckUpValues();
+			CheckUpValues();
 		}
 
-		public DataTable AsDataTable()
+		public DataTable ToDataTable()
 		{
-			return base.AsDataTable(TableIndexes.RecordStartRow, RowsCount);
+			var dt = base.ToDataTable(_rowParams["RecordStart"].Index, Rows.Count);
+			foreach(var value in _colParams.Values)	// カラム名の設定
+			{
+				dt.Columns[value.Index].ColumnName = value.Description;
+			}
+			foreach(var item in _colParams.Values.Where(cp=>cp.IsDelim))	// 区切りカラムの除去
+			{
+				dt.Columns.Remove(item.Description);
+			}
+			return dt;
 		}
 
+		/// <summary>
+		/// 日付が省略されている欄を日付で埋める
+		/// </summary>
 		private void FillBlankDate()
 		{
 			DateTime date = new DateTime();
-			for(var i=TableIndexes.RecordStartRow;i<base.RowsCount;i++)
+			for(var i= _rowParams["RecordStart"].Index; i<base.Rows.Count; i++)
 			{
-				if (ValueAt(i, TableIndexes.Date) != null) date = (DateTime)ValueAt(i, TableIndexes.Date);
-				else if (RowAt(i).Any(value => value != null)) SetValueAt(i, TableIndexes.Date, date);	// 1カ所でも記入されいてるセルがある場合は日付を入れる
+				if (ValueAt(i, _colParams["Date"].Index) != null) date = (DateTime)ValueAt(i, _colParams["Date"].Index);
+				else if (RowAt(i).Any(value => value != null)) SetValueAt(i, _colParams["Date"].Index, date);	// 1カ所でも記入されいてるセルがある場合は日付を入れる
 			}
 		}
 
+		/// <summary>
+		/// 日付が起源日に設定されているDateTime値、TimeSpanにすべきDateTime値を修正する
+		/// </summary>
 		private void FixTimeValues()
 		{
-			// TimeSpanとして扱われるべき項目がDateTimeとして格納されいてるのをTimeSpanに直す
-			for (var rowIdx = TableIndexes.RecordStartRow; rowIdx < base.RowsCount; rowIdx++)
+			var cols = _colParams.Values.Where(item => item.MayBeIncompleteTime);//.Select(item => item.Index);
+			foreach(var col in cols)
 			{
-				foreach(var colIdx in TableIndexes.TimeSpanColumns)
+				for (var rowIdx = _rowParams["RecordStart"].Index; rowIdx < base.Rows.Count; rowIdx++)
 				{
-					if (ValueAt(rowIdx, colIdx) != null)
+					var cellValue = ValueAt(rowIdx, col.Index);
+					if (cellValue == null) continue;
+					if (cellValue is DateTime)
 					{
-						var value = (DateTime)ValueAt(rowIdx, colIdx);
-						var span = value - ExcelOriginDate;
-						SetValueAt(rowIdx, colIdx, span);
+						if (col.Type == typeof(DateTime))
+						{
+							var rowDate = (DateTime)ValueAt(rowIdx, _colParams["Date"].Index);
+							SetValueAt(rowIdx, col.Index, new DateTime(rowDate.Year, rowDate.Month, rowDate.Day, ((DateTime)cellValue).Hour, ((DateTime)cellValue).Minute, 0));
+						}
+						else if (col.Type == typeof(TimeSpan))
+						{
+							SetValueAt(rowIdx, col.Index, new TimeSpan(((DateTime)cellValue).Hour, ((DateTime)cellValue).Minute, 0));
+						}
+						else
+						{
+							throw new ApplicationException();
+						}
+					}
+					else
+					{
+						var rowDate = (DateTime)ValueAt(rowIdx, _colParams["Date"].Index);
+						_messages.Add($"{rowDate.ToString("MM/dd")}の\"{cellValue.ToString()}\"を時刻として解釈できなかったので削除しました。");
+						SetValueAt(rowIdx, col.Index, null);
 					}
 				}
 			}
+
 		}
 
+		/// <summary>
+		/// 表の内容を確認して、診断メッセージを作成する
+		/// </summary>
+		/// <returns></returns>
 		public IReadOnlyList<string> CheckUpValues()
 		{
 			var messages = new List<string>();
 
-			var records = Rows.Skip(TableIndexes.RecordStartRow);
+			var rows = Rows.Skip(_rowParams["RecordStart"].Index).ToArray();
 
-			// 仕事タイプと開始・終了時刻の検証
-			// 勤務種類, 開始時刻, 終了時刻のいずれかが記入されている行を抽出する
-			var workTimeRecords = records
-				.Where(record => record[TableIndexes.WorkType] != null || record[TableIndexes.WorkStartTime] != null || record[TableIndexes.WorkEndTime] != null)
-				.Select(record => new 
-				{
-					Date = record[TableIndexes.Date],
-					Type = record[TableIndexes.WorkType], 
-					Start = record[TableIndexes.WorkStartTime], 
-					End = record[TableIndexes.WorkEndTime]
-				});
-			// 時刻の記入不足がないか
-			var incompleteWorkTimeRecords = workTimeRecords.Where(record => record.Start == null || record.End == null);
-			if(incompleteWorkTimeRecords.Any())
+			// 【時刻タイプ、開始・終了時刻の検証】
+			var timeRecords = rows.Select(record => new
 			{
-				foreach(var record in incompleteWorkTimeRecords)
+				Date = record[_colParams["Date"].Index],
+				Type = record[_colParams["TimeType"].Index],
+				Start = record[_colParams["StartTime"].Index],
+				End = record[_colParams["EndTime"].Index],
+			});
+			// 中途半端な記入の抽出
+			var incompleteTimeRecordGroups = timeRecords.Where(rec =>
+				!(rec.Type == null && rec.Start == null && rec.End == null) &&
+				!(rec.Type != null && rec.Start != null && rec.End != null))
+				.GroupBy(rec => rec.Date);
+			if(incompleteTimeRecordGroups.Any())
+			{
+				foreach(var group in incompleteTimeRecordGroups)
 				{
-					messages.Add($"{((DateTime)(record.Date)).ToString("MM/dd")}の開始/終了時刻記録が不足しています");
+					messages.Add($"{((DateTime)(group.Key)).ToString("MM/dd")}の時刻記録で記載が不足しています");
 				}
 			}
-
 			// 時刻が逆転していないか
-			var invalidWorkTimeRecords = workTimeRecords
-				.Where(record => record.Start != null && record.End != null && (TimeSpan)(record.Start) > (TimeSpan)(record.End));
-			if(invalidWorkTimeRecords.Any())
+			var invalidTimeRecordGroups = timeRecords.Where(record => 
+				record.Start != null && record.End != null && (DateTime)(record.Start) > (DateTime)(record.End))
+				.GroupBy(rec => rec.Date);
+			if (invalidTimeRecordGroups.Any())
 			{
-				foreach (var record in invalidWorkTimeRecords)
+				foreach (var gropu in invalidTimeRecordGroups)
 				{
-					messages.Add($"{((DateTime)(record.Date)).ToString("MM/dd")}の開始/終了時刻記録が矛盾しています");
+					messages.Add($"{((DateTime)(gropu.Key)).ToString("MM/dd")}の時刻記録に矛盾があります(開始>終了)");
 				}
 			}
 
-			// 各タスク時間記入の確認
-			var incompleteTaskRecords = records.Where(record => record[TableIndexes.TaskType] != null || record[TableIndexes.TaskTime]!=null)
+			// 【各タスク時間記入の確認】
+			var incompleteTaskRecordGroups = rows.Where(record =>
+				(record[_colParams["TaskType"].Index] != null && record[_colParams["TaskTime"].Index] == null) ||
+				(record[_colParams["TaskType"].Index] == null && record[_colParams["TaskTime"].Index] != null))
 				.Select(record => new
 				{
-					Date = record[TableIndexes.Date],
-					Type = record[TableIndexes.TaskType],
-					Time = record[TableIndexes.TaskTime]
-				})
-				.Where(record => record.Time == null || record.Type == null);
-			if(incompleteTaskRecords.Any())
+					Date = record[_colParams["Date"].Index],
+					Type = record[_colParams["TaskType"].Index],
+					Time = record[_colParams["TaskTime"].Index]
+				}).GroupBy(rec => rec.Date);
+
+			if (incompleteTaskRecordGroups.Any())
 			{
-				foreach(var record in incompleteTaskRecords)
+				foreach(var group in incompleteTaskRecordGroups)
 				{
-					messages.Add($"{((DateTime)(record.Date)).ToString("MM/dd")}に業務タイプ/時刻未記入の記録があります");
+					messages.Add($"{((DateTime)(group.Key)).ToString("MM/dd")}の業務タイプ記録で記載が不足しています");
 				}
 			}
 			return messages;
 		}
 
-
-		private class TaskElement
+		private class TaskInfo
 		{
 			public DateTime Date { get; set; }
 			public String Type { get; set; }
 			public String Detail { get; set; }
 			public TimeSpan Time { get; set; }
 
-			static public TaskElement FromRecordRow(IReadOnlyList<object> row)
+			static public TaskInfo FromRecordRow(IReadOnlyList<object> row)
 			{
-				return new TaskElement()
+				return new TaskInfo()
 				{
-					Date = (DateTime)row[TableIndexes.Date],
-					Type = (string)row[TableIndexes.TaskType],
-					Detail = (string)(string)row[TableIndexes.DoneTask],
-					Time = (TimeSpan)row[TableIndexes.TaskTime]
+					Date = (DateTime)row[_colParams["Date"].Index],
+					Type = (row[_colParams["TaskType"].Index] != null) ? (string)row[_colParams["TaskType"].Index] : "",
+					Detail = (row[_colParams["ActTask"].Index]!=null)?(string)row[_colParams["ActTask"].Index]:"",
+					Time = (row[_colParams["TaskTime"].Index]!=null)?(TimeSpan)row[_colParams["TaskTime"].Index]:new TimeSpan(0),
 				};
 			}
 		}
 
-		private DataTable TableFrom(IReadOnlyList<TaskElement> taskElements)
+		private DataTable TableFrom(IReadOnlyList<TaskInfo> taskElements)
 		{
 			var dt = new DataTable();
 
-			var propertyInfos = typeof(TaskElement).GetProperties();
+			var propertyInfos = typeof(TaskInfo).GetProperties();
 
 			foreach (var pi in propertyInfos)
 			{
-				dt.Columns.Add(pi.Name);
+				if(pi.PropertyType == typeof(TimeSpan))
+					dt.Columns.Add(pi.Name, typeof(string));	// TimeSpanはFormatが効かないので型を維持するメリットが少ない。表示を自分で変更するためstringにしておく
+				else
+					dt.Columns.Add(pi.Name, pi.PropertyType);
 			}
-			foreach(var element in taskElements)
+			foreach (var element in taskElements)
 			{
 				var dr = dt.NewRow();
 				foreach (var pi in propertyInfos)
 				{
-					dr[pi.Name] = pi.GetValue(element);
+					if (pi.PropertyType == typeof(TimeSpan))
+					{
+						var ts = (TimeSpan)pi.GetValue(element);
+						var hour = ts.Days * 24 + ts.Hours;
+						dr[pi.Name] = $"{hour}:{ts.Minutes:00}";
+					}
+					else
+					{
+						dr[pi.Name] = pi.GetValue(element);
+					}
 				}
 				dt.Rows.Add(dr);
 			}
@@ -272,44 +399,45 @@ namespace WorkRepo
 
 		public DataTable GetStatistics()
 		{
-			var allRecords = base.Rows.Skip(TableIndexes.RecordStartRow);
+			var elements = new List<TaskInfo>();
+			var allRecords = base.Rows.Skip(_rowParams["RecordStart"].Index);//.ToArray();
 
-			//var test = TaskElement.FromRecordRow(Rows[TableIndexes.RecordStartRow]);
+			var lastDate = allRecords.LastOrDefault()?[_colParams["Date"].Index];
 
 			var supportTasks = allRecords
-				.Where(row => (row[TableIndexes.TaskType] as string) == "事業支援")
-				.Select(row => TaskElement.FromRecordRow(row));
+				.Where(row => (row[_colParams["TaskType"].Index] as string) == "事業支援")
+				.Select(row => TaskInfo.FromRecordRow(row));
+
+			var researchTasks = allRecords
+				.Where(row => (row[_colParams["TaskType"].Index] as string) == "その他")
+				.Select(row => TaskInfo.FromRecordRow(row));
+
 			var supportTaskTimeSum = new TimeSpan(supportTasks.Sum(record => record.Time.Ticks));
-			var supportTaskSumElement = new TaskElement()
+			var researchTaskTimeSum = new TimeSpan(researchTasks.Sum(record => record.Time.Ticks));
+
+			var supportTaskSumElement = new TaskInfo()
 			{
-				Date = (DateTime)supportTasks.Last().Date,
-				Type = "事業支援",
+				Date = (lastDate!=null)?(DateTime)lastDate:new DateTime(0),
+				Type = "事業支援集計",
 				Detail = "集計",
 				Time = supportTaskTimeSum,
 			};
 
-			var researchTasks = allRecords
-				.Where(row => (row[TableIndexes.TaskType] as string) == "その他")
-				.Select(row => TaskElement.FromRecordRow(row));
-			var researchTaskTimeSum = new TimeSpan(researchTasks.Sum(record => record.Time.Ticks));
-			var researchTaskSumElement = new TaskElement()
+			var researchTaskSumElement = new TaskInfo()
 			{
-				Date = (DateTime)researchTasks.Last().Date,
-				Type = "その他",
+				Date = (lastDate != null) ? (DateTime)lastDate : new DateTime(0),
+				Type = "その他集計",
 				Detail = "集計",
 				Time = researchTaskTimeSum,
 			};
 
-			var elements = new List<TaskElement>();
 			elements.AddRange(supportTasks.ToArray());
-			elements.Add(supportTaskSumElement);
 			elements.AddRange(researchTasks.ToArray());
+			elements.Add(supportTaskSumElement);
 			elements.Add(researchTaskSumElement);
 
 			var dt = TableFrom(elements);
 			return dt;
 		}
-
-
 	}
 }
