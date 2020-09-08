@@ -54,11 +54,11 @@ namespace WorkRepo
 		}
 
 		/// <summary>
-		/// 内部データの空白文字列を指定の値に置き換える
+		/// 内部データの空白文字列(ホワイトスペース)を指定の値に置き換える
 		/// </summary>
 		/// <param name="to"></param>
 		/// <returns></returns>
-		public int ReplaceBlank(object to)
+		public int ReplaceBlankCell(object to)
 		{
 			int count = 0;
 			for(var i = 0; i<_values.Count; i++)
@@ -115,6 +115,19 @@ namespace WorkRepo
 			}
 			return dt;
 		}
+
+		/// <summary>
+		/// 列要素がすべてnullの行を取り除く
+		/// </summary>
+		public void RemoveEmptyRows()
+		{
+			for(var rowIdx = _values.Count-1;rowIdx>=0;rowIdx--)
+			{
+				if (_values[rowIdx].Any(obj => obj != null)) continue;
+				_values.RemoveAt(rowIdx);
+			}
+		}
+
 
 		/// <summary>
 		/// 指定の行を取り除く
@@ -177,7 +190,7 @@ namespace WorkRepo
 	{
 		private static readonly Dictionary<string, RowParameter> _rowParams = new Dictionary<string, RowParameter>
 		{
-			{"RecordStart", new RowParameter(){ Index = 4, Description = "記録開始行" } },
+			{"RecordStart", new RowParameter(){ Index = 1, Description = "記録開始行" } },
 		};
 		private static readonly Dictionary<string, ColumnParameter> _colParams = new Dictionary<string, ColumnParameter>
 		{
@@ -209,7 +222,8 @@ namespace WorkRepo
 
 		public WorkRecordTable(DataTable dt) : base(dt)
 		{
-			ReplaceBlank(null);
+			ReplaceBlankCell(null);
+			RemoveEmptyRows();
 			FillBlankDate();
 			FixTimeValues();
 			CheckUpValues();
@@ -400,44 +414,27 @@ namespace WorkRepo
 		public DataTable GetStatistics()
 		{
 			var elements = new List<TaskInfo>();
-			var allRecords = base.Rows.Skip(_rowParams["RecordStart"].Index);//.ToArray();
+			var allRecords = base.Rows.Skip(_rowParams["RecordStart"].Index).Select(row => TaskInfo.FromRecordRow(row));
 
-			var lastDate = allRecords.LastOrDefault()?[_colParams["Date"].Index];
+			var grouped = allRecords.GroupBy(task => task.Type);
 
-			var supportTasks = allRecords
-				.Where(row => (row[_colParams["TaskType"].Index] as string) == "事業支援")
-				.Select(row => TaskInfo.FromRecordRow(row));
+			var sums = new List<TaskInfo>();
 
-			var researchTasks = allRecords
-				.Where(row => (row[_colParams["TaskType"].Index] as string) == "その他")
-				.Select(row => TaskInfo.FromRecordRow(row));
-
-			var supportTaskTimeSum = new TimeSpan(supportTasks.Sum(record => record.Time.Ticks));
-			var researchTaskTimeSum = new TimeSpan(researchTasks.Sum(record => record.Time.Ticks));
-
-			var supportTaskSumElement = new TaskInfo()
+			foreach(var group in grouped)
 			{
-				Date = (lastDate!=null)?(DateTime)lastDate:new DateTime(0),
-				Type = "事業支援集計",
-				Detail = "集計",
-				Time = supportTaskTimeSum,
-			};
+				var sum = new TaskInfo()
+				{
+					//Date = (lastDate != null) ? (DateTime)lastDate : new DateTime(0),
+					Type = group.Key,
+					Detail = "集計",
+					Time = new TimeSpan(group.Sum(task=>task.Time.Ticks)),
+				};
+				sums.Add(sum);
+			}
 
-			var researchTaskSumElement = new TaskInfo()
-			{
-				Date = (lastDate != null) ? (DateTime)lastDate : new DateTime(0),
-				Type = "その他集計",
-				Detail = "集計",
-				Time = researchTaskTimeSum,
-			};
-
-			elements.AddRange(supportTasks.ToArray());
-			elements.AddRange(researchTasks.ToArray());
-			elements.Add(supportTaskSumElement);
-			elements.Add(researchTaskSumElement);
-
-			var dt = TableFrom(elements);
+			var dt = TableFrom(sums);
 			return dt;
+
 		}
 	}
 }
