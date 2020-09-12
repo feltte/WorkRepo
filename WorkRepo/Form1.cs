@@ -62,7 +62,82 @@ namespace WorkRepo
 					listBoxSheets.Items.Add(dt.TableName);
 				}
 			}
+			AggregateAllSheets();
 		}
+
+		private void AggregateAllSheets()
+		{
+			// {人名, {タスク種類, 合計時間}}の辞書
+			var personalAggregates = new Dictionary<string, Dictionary<string, TimeSpan>>();
+			// タスク種類集計用のハッシュ(非重複リストとして)
+			var usedTaskTypesHash = new HashSet<string>();
+
+			foreach(DataTable table in excelWorkBook.Tables)
+			{
+				if((table.Rows[0][0] as string)!=null && (table.Rows[0][0] as string)=="日付")
+				{
+					var personalData = new WorkRecordTable(table);
+					var aggregates = personalData.Aggregate();
+					long timeSum = 0;
+					foreach(var time in aggregates.Values)
+					{
+						timeSum += time.Ticks;
+					}
+					aggregates.Add("合計", new TimeSpan(timeSum));
+					personalAggregates.Add(table.TableName, aggregates);
+					foreach(var taskType in aggregates.Keys)
+					{
+						if(!string.IsNullOrWhiteSpace(taskType) && !string.IsNullOrEmpty(taskType))	usedTaskTypesHash.Add(taskType);
+					}
+				}
+			}
+			var usedTaskTypesList = usedTaskTypesHash.ToList();
+			usedTaskTypesList.Sort();
+			var dt = new DataTable();
+
+			// カラム作成
+			dt.Columns.Add("項目", typeof(string));
+			foreach(var person in personalAggregates.Keys)
+			{
+				dt.Columns.Add(person, typeof(TimeSpan));
+			}
+			dt.Columns.Add("合計", typeof(TimeSpan));
+
+			// 項目カラムにタスク種類を設定しつつ、各人のセルにセットすべき値があれば値をセット
+			foreach (var taskType in usedTaskTypesList)
+			{
+				var row = dt.NewRow();
+				row["項目"] = taskType;
+				foreach(var person in personalAggregates.Keys)
+				{
+					if(personalAggregates[person].ContainsKey(taskType))
+					{
+						row[person] = (personalAggregates[person][taskType]);
+					}
+				}
+				dt.Rows.Add(row);
+			}
+
+			// 各タスク種類の合計を計算
+			foreach(DataRow row in dt.Rows)
+			{
+				long totalTime = 0;
+				for (var i = 1; i < dt.Columns.Count - 2; i++)
+				{
+					Trace.Write($"{i}={row[i].GetType()},");
+					if (!(row[i] is DBNull))
+					{
+						Trace.Write($"{row[i]}");
+						totalTime += ((TimeSpan)row[i]).Ticks;
+					}
+					Trace.WriteLine("");
+				}
+				row["合計"] = new TimeSpan(totalTime);
+			}
+			dataGridView1.DataSource = dt;
+		}
+
+
 
 		WorkRecordTable workRecord;
 
@@ -102,7 +177,23 @@ namespace WorkRepo
 
 		private void buttonStatistics_Click(object sender, EventArgs e)
 		{
-			dataGridView1.DataSource = workRecord.GetStatistics();
+			//dataGridView1.DataSource = workRecord.GetStatistics();
+		}
+
+		private void buttonAggregate_Click(object sender, EventArgs e)
+		{
+
+
+		}
+
+		private void dataGridView1_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+		{
+			if (e.Value != null && e.Value != DBNull.Value && e.Value.GetType() == typeof(TimeSpan))
+			{
+				var value = (TimeSpan)e.Value;
+				e.Value = (value.Days * 24 + value.Hours).ToString() + ":" + value.Minutes.ToString("00");
+				e.FormattingApplied = true;
+			}
 		}
 	}
 }

@@ -171,7 +171,7 @@ namespace WorkRepo
 	class ColumnParameter : ItemParameter
 	{
 		/// <summary>
-		/// データ型
+		/// データ型(デフォルトはstring)
 		/// </summary>
 		public Type Type { get; set; } = typeof(string);
 
@@ -360,19 +360,31 @@ namespace WorkRepo
 
 		private class TaskInfo
 		{
+			/// <summary>
+			/// タスクを実施した日付
+			/// </summary>
 			public DateTime Date { get; set; }
+			/// <summary>
+			/// タスクの種類
+			/// </summary>
 			public String Type { get; set; }
+			/// <summary>
+			/// タスクの詳細
+			/// </summary>
 			public String Detail { get; set; }
+			/// <summary>
+			/// タスクにかけた時間
+			/// </summary>
 			public TimeSpan Time { get; set; }
 
 			static public TaskInfo FromRecordRow(IReadOnlyList<object> row)
 			{
 				return new TaskInfo()
 				{
-					Date = (DateTime)row[_colParams["Date"].Index],
+					Date = (row[_colParams["Date"].Index] != null) ? (DateTime)row[_colParams["Date"].Index] : new DateTime(0),
 					Type = (row[_colParams["TaskType"].Index] != null) ? (string)row[_colParams["TaskType"].Index] : "",
-					Detail = (row[_colParams["ActTask"].Index]!=null)?(string)row[_colParams["ActTask"].Index]:"",
-					Time = (row[_colParams["TaskTime"].Index]!=null)?(TimeSpan)row[_colParams["TaskTime"].Index]:new TimeSpan(0),
+					Detail = (row[_colParams["ActTask"].Index] != null) ? (string)row[_colParams["ActTask"].Index] : "",
+					Time = (row[_colParams["TaskTime"].Index] != null) ? (TimeSpan)row[_colParams["TaskTime"].Index] : new TimeSpan(0),
 				};
 			}
 		}
@@ -409,6 +421,21 @@ namespace WorkRepo
 				dt.Rows.Add(dr);
 			}
 			return dt;
+		}
+
+		public Dictionary<string, TimeSpan> Aggregate()
+		{
+			var recordsGroupedByTaskType = base.Rows.Skip(_rowParams["RecordStart"].Index)
+				.Select(row => TaskInfo.FromRecordRow(row))
+				.GroupBy(task => task.Type);
+
+			var aggregates = new Dictionary<string, TimeSpan>();
+			foreach (var group in recordsGroupedByTaskType)
+			{
+				var time = new TimeSpan(group.Sum(task => task.Time.Ticks));
+				aggregates.Add(group.Key, time);
+			}
+			return aggregates;
 		}
 
 		public DataTable GetStatistics()
