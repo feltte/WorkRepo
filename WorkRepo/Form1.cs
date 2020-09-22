@@ -16,13 +16,11 @@ namespace WorkRepo
 	public partial class Form1 : Form
 	{
 		private BindingList<string> sourceFilesList = new BindingList<string>();
-		private BindingList<string> messagesList = new BindingList<string>();
 
 		public Form1()
 		{
 			InitializeComponent();
 			listBoxSourceFiles.DataSource = sourceFilesList;
-			listBoxMessages.DataSource = messagesList;
 		}
 
 		private void listBoxSourceFiles_DragEnter(object sender, DragEventArgs e)
@@ -55,14 +53,9 @@ namespace WorkRepo
 			using (var fs = File.Open(selectedFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
 			using (var excelReader = ExcelReaderFactory.CreateReader(fs))
 			{
-				listBoxSheets.Items.Clear();
 				excelWorkBook = excelReader.AsDataSet();
-				foreach (DataTable dt in excelWorkBook.Tables)
-				{
-					listBoxSheets.Items.Add(dt.TableName);
-				}
+				AggregateAllSheets();
 			}
-			AggregateAllSheets();
 		}
 
 		private void AggregateAllSheets()
@@ -74,7 +67,7 @@ namespace WorkRepo
 
 			foreach(DataTable table in excelWorkBook.Tables)
 			{
-				if((table.Rows[0][0] as string)!=null && (table.Rows[0][0] as string)=="日付")
+				if((table.Rows[0][0] as string)!=null && (table.Rows[0][0] as string)=="日付")	// 最初のセルが"日付"のシートをデータシートして扱う
 				{
 					var personalData = new WorkRecordTable(table);
 					var aggregates = personalData.Aggregate();
@@ -134,7 +127,9 @@ namespace WorkRepo
 				}
 				row["合計"] = new TimeSpan(totalTime);
 			}
+
 			dataGridView1.DataSource = dt;
+			dataGridView1.ClipboardCopyMode = DataGridViewClipboardCopyMode.EnableAlwaysIncludeHeaderText;
 		}
 
 
@@ -160,12 +155,6 @@ namespace WorkRepo
 
 		private void ShowSourceRecords()
 		{
-			messagesList.Clear();
-			if (workRecord.ErrorMessages.Count != 0)
-			{
-				foreach (var msg in workRecord.ErrorMessages)
-					messagesList.Add(msg);
-			}
 			var dt = workRecord.ToDataTable();
 
 			dataGridView1.DataSource = dt;
